@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenStreetMap Path</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map" style="height: 600px; width: 100%;"></div>
+    <script>
+        const apiUrl = 'https://gis.buxxed.me/fastest-path';
+        const requestBody = {
+            start: [118.590623, -7.935815],
+            end: [116.479366, -5.487643]
+        };
+        
+        const map = L.map('map').setView([-7.935815, 118.590623], 8);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data || data.length === 0) {
+                    alert('No path data found!');
+                    return;
+                }
+                const coordinates = data.flatMap(feature => feature.geometry.coordinates);
+                const latLngs = coordinates.map(coord => [coord[1], coord[0]]);
+                const path = L.polyline(latLngs, { color: 'blue', weight: 5 }).addTo(map);
+                map.fitBounds(path.getBounds());
+                const startMarker = L.marker(latLngs[0]).addTo(map).bindPopup('Start Point');
+                const endMarker = L.marker(latLngs[latLngs.length - 1]).addTo(map).bindPopup('End Point');
+            })
+            .catch(error => {
+                console.error('Error fetching path:', error);
+                alert('Failed to fetch path data.');
+            });
+        </script>
+</body>
+</html>
