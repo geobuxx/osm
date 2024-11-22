@@ -1,62 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenStreetMap Path</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Nearest LineString</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #map {
+      height: 500px;
+      width: 100%;
+    }
+    #controls {
+      margin: 10px 0;
+    }
+  </style>
 </head>
 <body>
-    <div id="map" style="height: 600px; width: 100%;"></div>
-    <script>
-        const apiUrl = 'https://gisapi.buxxed.me/api/nearest';
+  <h1>Find Nearest LineString</h1>
+  
+  <div id="controls">
+    <label for="latitude">Latitude:</label>
+    <input type="number" id="latitude" step="0.000001" placeholder="-6.2" required>
+    
+    <label for="longitude">Longitude:</label>
+    <input type="number" id="longitude" step="0.000001" placeholder="107.0" required>
+    
+    <button id="searchButton">Find Nearest</button>
+  </div>
 
-        const requestBody = {
-            lat: -6.613446,
-            lon: 108.847094
-        };
+  <div id="map"></div>
 
-        const map = L.map('map').setView([-7.935815, 118.590623], 8);
+  <script>
+    // Initialize the map
+    const map = L.map('map').setView([-6.5, 109], 8); // Default center
+    
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
+    // Event listener for the "Find Nearest" button
+    document.getElementById('searchButton').addEventListener('click', async () => {
+      const lat = parseFloat(document.getElementById('latitude').value);
+      const lon = parseFloat(document.getElementById('longitude').value);
+
+      if (isNaN(lat) || isNaN(lon)) {
+        alert("Please enter valid latitude and longitude values.");
+        return;
+      }
+
+      try {
+        // Call the API
+        const response = await fetch('https://gisapi.buxxed.me/api/nearest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ lat, lon })
+        });
+
+        if (!response.ok) {
+          throw new Error('No nearest location found or API error');
+        }
+
+        const data = await response.json();
+        const lineString = data.nearest_location.geometry.coordinates;
+
+        // Convert coordinates to [lat, lon] format for Leaflet
+        const leafletCoordinates = lineString.map(coord => [coord[1], coord[0]]);
+
+        // Clear existing layers
+        map.eachLayer(layer => {
+          if (!layer._url) map.removeLayer(layer); // Keep only the base map
+        });
+
+        // Add the LineString to the map
+        const line = L.polyline(leafletCoordinates, {
+          color: 'blue',
+          weight: 4,
         }).addTo(map);
 
-        fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (!data || !data.nearest_location || !data.nearest_location.geometry) {
-                    alert('Invalid or empty response from API!');
-                    return;
-                }
+        // Fit the map to the LineString bounds
+        map.fitBounds(line.getBounds());
 
-                const coordinates = data.nearest_location.geometry.coordinates;
-                if (!coordinates || coordinates.length === 0) {
-                    alert('No path data found!');
-                    return;
-                }
+        // Add a popup
+        const properties = data.nearest_location.properties;
+        line.bindPopup(`Name: ${properties.name || 'N/A'}`).openPopup();
 
-                const latLngs = coordinates.map(coord => [coord[1], coord[0]]);
-                const path = L.polyline(latLngs, { color: 'blue', weight: 5 }).addTo(map);
-
-                map.fitBounds(path.getBounds());
-
-                const startMarker = L.marker(latLngs[0]).addTo(map).bindPopup('Start Point');
-                const endMarker = L.marker(latLngs[latLngs.length - 1]).addTo(map).bindPopup('End Point');
-
-                const pathName = data.nearest_location.properties?.name || 'Unknown Path';
-                alert(`Path Name: ${pathName}`);
-            })
-            .catch(error => {
-                console.error('Error fetching path:', error);
-                alert('Failed to fetch path data.');
-            });
-    </script>
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+  </script>
 </body>
 </html>

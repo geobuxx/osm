@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenStreetMap Path</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map" style="height: 600px; width: 100%;"></div>
+    <script>
+        const apiUrl = 'https://gisapi.buxxed.me/api/nearest';
+
+        const requestBody = {
+            lat: -6.613446,
+            lon: 108.847094
+        };
+
+        const map = L.map('map').setView([-7.935815, 118.590623], 8);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data || !data.nearest_location || !data.nearest_location.geometry) {
+                    alert('Invalid or empty response from API!');
+                    return;
+                }
+
+                const coordinates = data.nearest_location.geometry.coordinates;
+                if (!coordinates || coordinates.length === 0) {
+                    alert('No path data found!');
+                    return;
+                }
+
+                const latLngs = coordinates.map(coord => [coord[1], coord[0]]);
+                const path = L.polyline(latLngs, { color: 'blue', weight: 5 }).addTo(map);
+
+                map.fitBounds(path.getBounds());
+
+                const startMarker = L.marker(latLngs[0]).addTo(map).bindPopup('Start Point');
+                const endMarker = L.marker(latLngs[latLngs.length - 1]).addTo(map).bindPopup('End Point');
+
+                const pathName = data.nearest_location.properties?.name || 'Unknown Path';
+                alert(`Path Name: ${pathName}`);
+            })
+            .catch(error => {
+                console.error('Error fetching path:', error);
+                alert('Failed to fetch path data.');
+            });
+    </script>
+</body>
+</html>
