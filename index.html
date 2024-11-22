@@ -60,7 +60,7 @@
           type="number" 
           id="latitude" 
           step="0.000001" 
-          placeholder="-6.2" 
+          value="-6.8731"
           required 
           class="w-full bg-transparent text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-700 transition"
         >
@@ -71,7 +71,7 @@
           type="number" 
           id="longitude" 
           step="0.000001" 
-          placeholder="107.0" 
+          value="107.5759" 
           required 
           class="w-full bg-transparent text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-700 transition"
         >
@@ -90,7 +90,7 @@
   </div>
 
   <script>
-    const map = L.map('map').setView([-6.5, 109], 8);
+    const map = L.map('map').setView([-6.8731, 109], 8);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
